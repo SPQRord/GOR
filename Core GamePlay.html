@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Glory of Rome — Historical Battles</title>
+  <style>
+    :root { --sidebar-width: 340px; }
+    body { font-family: Arial, sans-serif; text-align: center; background: #f0f0f0; margin:0; padding:0; }
+    header { padding:12px; background:#222; color:#fff; }
+    main { padding: 12px; }
+    canvas { border: 4px solid #333; background: #8b6; margin: 20px auto; display: block; }
+    #status { font-size: 16px; margin: 6px; color: #333; font-weight: bold; }
+    #scenarioInfo, #unitInfo { font-size: 14px; margin: 6px; padding: 8px; background: #fff; border-radius: 8px; display: inline-block; }
+    #deployArea { margin: 12px; }
+    button { padding: 8px 12px; font-size: 14px; margin: 6px; cursor: pointer; border: none; border-radius: 4px; background: #4CAF50; color: white; }
+    button:hover { background: #45a049; }
+    button.disabled { background: #ccc; opacity: 0.6; cursor: not-allowed; }
+    button.primary { background: #2196F3; font-weight: bold; padding: 10px 16px; font-size: 16px; }
+    button.primary:hover { background: #0b7dda; }
+    button.secondary { background: #ff9800; }
+    button.secondary:hover { background: #e68900; }
+    button.heal { background: #ff1493; font-weight: bold; padding: 10px 14px; font-size: 14px; }
+    button.heal:hover { background: #ff69b4; }
+    .small { font-size: 12px; padding:4px 8px; }
+
+    #legendPanel {
+      position: fixed; right: 20px; top: 20px;
+      background: rgba(255,255,255,0.98); padding: 12px;
+      border-radius: 10px; border: 2px solid #333;
+      width: var(--sidebar-width); font-size: 13px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      max-height: calc(100vh - 40px); overflow-y: auto; z-index: 100;
+    }
+    #legendHeader { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    #legendClose { cursor: pointer; font-weight: bold; padding:4px 8px; background:#eee; border-radius:6px; }
+    #legendRemove { cursor:pointer; color:#c00; font-size:12px; margin-left:8px; }
+    .legend-section { margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
+    .legend-unit { margin:6px 0; font-weight:bold; }
+    .unit-row { font-size:12px; margin:4px 0; }
+    .small-muted { color:#666; font-size:12px }
+    #openSidebarBtn {
+      position: fixed; right: 20px; top: 20px; z-index: 101;
+      background:#333; color:#fff; padding:8px 10px; border-radius:10px; display:none; cursor:pointer;
+    }
+    #menuOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:200; overflow-y: auto; }
+    #menuBox {
+      background: #fff; padding: 20px; border-radius: 10px; width: 700px; max-width: 95%; text-align: left;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6); max-height: 90vh; overflow-y: auto;
+    }
+    #menuBox h2 { margin-top:0; text-align: center; }
+    .menuBtn { display:inline-block; margin:8px 6px; padding:10px 16px; font-size:16px; cursor:pointer; background: #2196F3; color: white; border: none; border-radius: 4px; }
+    .menuBtn:hover { background: #0b7dda; }
+    #mainMenu { display: block; }
+    #battleSelection { display: none; }
+    .back-button { background: #666; margin: 10px 0; width: 100%; padding: 12px; font-size: 14px; }
+    .back-button:hover { background: #555; }
+    .battle-card { 
+      background: #f9f9f9; border: 2px solid #ddd; border-radius: 8px; padding: 12px; margin: 10px 0; cursor: pointer; transition: all 0.2s;
+    }
+    .battle-card:hover { background: #e8f4f8; border-color: #2196F3; }
+    .battle-card h3 { margin: 8px 0; color: #222; }
+    .battle-difficulty { font-size: 12px; color: #ff9800; font-weight: bold; }
+    .battle-difficulty.easy { color: #4CAF50; }
+    .battle-difficulty.hard { color: #f44336; }
+    .battle-difficulty.moderate { color: #ff9800; }
+    .battle-info { font-size: 13px; color: #666; }
+    #howModal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:210; overflow-y: auto; padding: 20px 0; }
+    #howBox { background:#fff; padding:20px; border-radius:10px; width:700px; max-width:95%; text-align: left; max-height: 80vh; overflow-y: auto; }
+    #howBox h2 { margin-top: 0; text-align: center; color: #222; }
+    #howBox h3 { color: #2196F3; margin-top: 15px; margin-bottom: 8px; border-bottom: 2px solid #2196F3; padding-bottom: 5px; }
+    #howBox ul { margin: 8px 0; padding-left: 20px; }
+    #howBox li { margin: 6px 0; line-height: 1.4; }
+    #howBox .highlight { background: #fffacd; padding: 2px 4px; border-radius: 3px; }
+    #howBox .closeBtn { display: block; margin: 20px auto 0; padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    #howBox .closeBtn:hover { background: #0b7dda; }
+    #combatControls { margin: 12px 0; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    #nextTurnBtn { background: #2196F3; font-size: 16px; font-weight: bold; padding: 12px 20px; }
+    #skipWaitBtn { background: #ff9800; font-size: 14px; padding: 10px 16px; }
+    #nextTurnBtn:disabled { background: #ccc; cursor: not-allowed; }
+    #healBtn { display: none; margin-left: 10px; }
+  </style>
+</head>
+<body>
+  <header><strong>Glory of Rome — Historical Battles</strong></header>
+  <main>
+    <div id="scenarioInfo">Scenario: <span id="scenarioText">...</span></div>
+    <div id="status">Waiting to start...</div>
+    <div id="unitInfo">Current: <span id="currentUnit">Nothing</span></div>
+    <canvas id="board" width="600" height="600"></canvas>
+    <div id="deployArea"></div>
+    <div id="combatControls" style="display:none;">
+      <button id="nextTurnBtn" class="primary">➜ Next Turn (End My Actions)</button>
+      <button id="skipWaitBtn" class="secondary">⏭ Skip Enemy Animation</button>
+      <button id="healBtn" class="heal">❤️ Heal Unit (6 STA → 1/8 HP)</button>
+    </div>
+    <div id="controls">
+      <button id="newGameBtn" onclick="openMenu()" style="background:#f66;">New Battle</button>
+    </div>
+  </main>
+  <div id="legendPanel" role="complementary" aria-label="Game sidebar">
+    <div id="legendHeader">
+      <div><strong>Game Sidebar</strong></div>
+      <div>
+        <span id="legendRemove" title="Remove sidebar (permanently)">🗑</span>
+        <span id="legendClose" title="Hide sidebar">✕</span>
+      </div>
+    </div>
+    <div id="legendContent"></div>
+  </div>
+  <button id="openSidebarBtn" title="Show sidebar">📋</button>
+  <div id="menuOverlay">
+    <div id="menuBox">
+      <div id="mainMenu">
+        <h2>Glory of Rome</h2>
+        <p>Choose your battle and command your legions to victory!</p>
+        <div>
+          <button class="menuBtn" id="playBtn" style="width: 100%;">⚔️ Choose Battle</button>
+          <button class="menuBtn" id="howBtn" style="width: 100%;">❓ How to Play</button>
+        </div>
+        <hr/>
+        <div style="font-size:13px;color:#444;">
+          Tip: Manage stamina carefully! Towers reveal enemies in nearby trees (5×5 area). Cavalry can only attack ONCE per turn!
+        </div>
+      </div>
+      <div id="battleSelection">
+        <h2>⚔️ Select a Battle</h2>
+        <div class="battle-card" onclick="chooseBattle('nile')"><h3>🌊 Battle of the Nile (47 BC)</h3>
+          <div class="battle-difficulty easy">★ Easy - Best for New Players</div>
+          <div class="battle-info">Play as Caesar. Defeat King Ptolemy XIII and his forces.</div>
+        </div>
+        <div class="battle-card" onclick="chooseBattle('chaeronea')"><h3>🏔️ Battle of Chaeronea (86 BC)</h3>
+          <div class="battle-difficulty easy">★ Easy - Best for New Players</div>
+          <div class="battle-info">Play as Sulla. Victory over Mithridates VI. A classic Roman triumph.</div>
+        </div>
+        <div class="battle-card" onclick="chooseBattle('phalaphiris')"><h3>⚔️ Battle of Phalaphiris (48 BC)</h3>
+          <div class="battle-difficulty moderate">★★ Moderate - Caesar's Conquest</div>
+          <div class="battle-info">Play as Caesar. Balanced forces. A crucial victory on the path to greatness.</div>
+        </div>
+        <div class="battle-card" onclick="chooseBattle('philipii')"><h3>🗡️ Battle of Philippi (42 BC)</h3>
+          <div class="battle-difficulty moderate">★★ Moderate - Caesar's Avengers</div>
+          <div class="battle-info">Play as Augustus & Antony. Defeat the assassins of Caesar. Two coordinated legions against a divided enemy.</div>
+        </div>
+        <div class="battle-card" onclick="chooseBattle('zama')"><h3>⚔️ Battle of Zama (202 BC)</h3>
+          <div class="battle-difficulty moderate">★★ Moderate - Final Victory</div>
+          <div class="battle-info">Play as Rome. Scipio's decisive victory. Defeat Hannibal once and for all!</div>
+        </div>
+        <div class="battle-card" onclick="chooseBattle('cannae')"><h3>🏛️ Battle of Cannae (216 BC)</h3>
+          <div class="battle-difficulty hard">★★★ Hardest - Hannibal's Masterpiece</div>
+          <div class="battle-info">Play as Rome. Face Hannibal's double envelopment. Repel the Carthaginian army and eliminate Hannibal!</div>
+        </div>
+        <div class="battle-card" onclick="chooseBattle('teutoburg')"><h3>🌲 Battle of Teutoburg Forest (9 AD)</h3>
+          <div class="battle-difficulty hard">★★★ Hardest - Germanic Ambush</div>
+          <div class="battle-info">Play as Rome. Dense forest, hidden enemies. The Romans' greatest military disaster. Eliminate all Germanic forces!</div>
+        </div>
+        <div class="battle-card" onclick="chooseBattle('random')"><h3>🎲 Random Battle vs Barbarians</h3>
+          <div class="battle-difficulty moderate">★★ Varies - Unpredictable</div>
+          <div class="battle-info">Both sides deploy freely. A symmetric clash of armies.</div>
+        </div>
+        <button class="back-button" onclick="backToMainMenu()">← Back to Main Menu</button>
+      </div>
+    </div>
+  </div>
+  <div id="howModal">
+    <div id="howBox">
+      <h2>🏛️ Glory of Rome — Complete Guide</h2>
+      <h3>📋 Overview</h3>
+      <ul>
+        <li><strong>Glory of Rome</strong> is a turn-based tactical battle game featuring famous historical battles and random scenarios.</li>
+        <li>Play as legendary commanders: Caesar, Scipio, Augustus, Antony, and Sulla.</li>
+        <li>Victory is achieved by eliminating all enemy units or destroying their general.</li>
+      </ul>
+      <h3>🎮 Game Modes</h3>
+      <ul>
+        <li><strong>Historical Battles:</strong> Pre-deployed armies in famous engagements. Learn tactics from history!</li>
+        <li><strong>Random Battle:</strong> Traditional deployment mode where both sides place units in their first three rows.</li>
+      </ul>
+      <h3>📜 Historical Scenarios</h3>
+      <ul>
+        <li><strong>Battle of Cannae (216 BC) - ★★★ Hardest:</strong> Play as Rome facing Hannibal's legendary double envelopment. You must overcome his superior tactics.</li>
+        <li><strong>Battle of Teutoburg Forest (9 AD) - ★★★ Hardest:</strong> Dense forests hide Germanic warriors. Recover from this historical disaster.</li>
+        <li><strong>Battle of Phalaphiris (48 BC) - ★★ Moderate:</strong> Play as Caesar. Balanced forces with diverse unit types.</li>
+        <li><strong>Battle of Philippi (42 BC) - ★★ Moderate:</strong> Play as Augustus & Antony. Coordinate two armies to avenge Caesar.</li>
+        <li><strong>Battle of the Nile (47 BC) - ★ Easy (New Players):</strong> Play as Caesar in Egypt. Perfect for learning.</li>
+        <li><strong>Battle of Chaeronea (86 BC) - ★ Easy (New Players):</strong> Play as Sulla. Introductory difficulty.</li>
+        <li><strong>Battle of Zama (202 BC) - ★★ Moderate:</strong> Scipio's triumph over Hannibal. The culmination of the Punic Wars.</li>
+        <li><strong>Random Battle - Varies:</strong> Symmetric deployment. You deploy on rows 7-9, enemy on rows 0-2.</li>
+      </ul>
+      <h3>🎮 Game Flow</h3>
+      <ul>
+        <li><strong>Random Battle Deployment Phase:</strong> Place your units and structures (towers/walls) on your side of the battlefield (rows 7-9).</li>
+        <li><strong>Historical Battle Start:</strong> All units are pre-deployed. Combat begins immediately.</li>
+        <li><strong>Combat Phase:</strong> Take turns moving and attacking units. After you act, the AI moves 2-4 of their units, then control returns to you.</li>
+        <li><strong>Each turn:</strong> You can move and act with as many units as stamina allows. Press "Next Turn" when done to end your turn.</li>
+      </ul>
+      <h3>⚔️ Combat Mechanics</h3>
+      <ul>
+        <li><strong>Unit Selection:</strong> Click a unit to select it. Available moves/attacks are highlighted in yellow.</li>
+        <li><strong>Movement:</strong> Click a highlighted tile to move. Each movement costs stamina based on terrain.</li>
+        <li><strong>Attacks:</strong> Melee units attack adjacent tiles (except Triarii, who can attack 2 tiles away). Ranged units attack 1-3 tiles away (4 from towers).</li>
+        <li><strong>Damage Calculation:</strong> Attacker's attack value × multipliers - defender's defense reduction = damage.</li>
+        <li><span class="highlight">General Aura: Units within 3×3 area around a General get 1.2× damage boost!</span></li>
+        <li><span class="highlight">Cavalry Restriction: Cavalry units can ONLY attack once per turn (but can move multiple times with half stamina cost).</span></li>
+      </ul>
+      <h3>❤️ Healing System (NEW!)</h3>
+      <ul>
+        <li><strong>Heal Button:</strong> When you select a unit, a ❤️ Heal button appears at the bottom.</li>
+        <li><strong>Cost:</strong> 6 stamina converts to 1/8 (12.5%) HP recovery.</li>
+        <li><strong>Example:</strong> A unit with max 4 HP heals 0.5 HP per heal action.</li>
+        <li><strong>Insufficient Stamina:</strong> If a unit has less than 6 stamina, healing does nothing.</li>
+        <li><strong>Strategic Use:</strong> Heal key units between turns or late in battle to preserve forces.</li>
+      </ul>
+      <h3>⚡ Stamina System (Critical!)</h3>
+      <ul>
+        <li><span class="highlight">All units start with 8 stamina</span> (Generals get 12).</li>
+        <li><span class="highlight">Each turn, stamina recovers by 4</span> (Cavalry recover 2 extra due to half-cost efficiency).</li>
+        <li><strong>Movement Costs:</strong>
+          <ul>
+            <li>Plains: 1 stamina</li>
+            <li>Trees: 2 stamina</li>
+            <li>Mountain Level 1: 3 stamina</li>
+            <li>Mountain Level 2+: 4 stamina</li>
+            <li>Water: 8 stamina (very expensive!)</li>
+          </ul>
+        </li>
+        <li><strong>Attack Costs:</strong>
+          <ul>
+            <li>Melee Attack: 4 stamina</li>
+            <li>Ranged Attack: 3 stamina</li>
+            <li>Healing: 6 stamina (→ 1/8 HP recovered)</li>
+          </ul>
+        </li>
+        <li><span class="highlight">Cavalry (including Generals) use HALF stamina costs</span> for movement and attacks.</li>
+        <li><span class="highlight">Cavalry can ONLY attack ONCE per turn</span> to prevent overpoweredness.</li>
+        <li><strong>Red Stamina Bar:</strong> Shows remaining stamina. When empty, the unit cannot move or attack until next turn.</li>
+      </ul>
+      <h3>👥 Unit Types</h3>
+      <ul>
+        <li><strong>Legionary (LEG):</strong> Basic infantry. Balanced stats. 3 HP, 1 ATK, 3 Move.</li>
+        <li><strong>Hastati (HAST):</strong> Light infantry. Same as Legionary. 3 HP, 1 ATK, 3 Move.</li>
+        <li><strong>Princeps (PRIN):</strong> Heavier infantry. 4 HP, 1 ATK, 3 Move.</li>
+        <li><strong>Triarii (TRIA):</strong> Elite infantry. Strongest melee. <span class="highlight">Can attack 2 tiles away</span>. 4 HP, 2 ATK, 3 Move.</li>
+        <li><strong>Velites (VEL):</strong> Ranged archer. 2 HP, 2 ATK, 3 Move, 2 Range.</li>
+        <li><strong>Sagittarii (SAG):</strong> Ranged archer. 2 HP, 2 ATK, 3 Move, 2 Range.</li>
+        <li><strong>Equites (CAL):</strong> Cavalry. Fast and strong. <span class="highlight">Uses half stamina</span>. <span class="highlight">Can attack ONLY ONCE per turn</span>. 3 HP, 2 ATK, 5 Move.</li>
+        <li><strong>General (GEN):</strong> Rare elite unit. <span class="highlight">1.5× HP, ATK, Stamina</span> compared to cavalry. <span class="highlight">Can attack ONLY ONCE per turn</span>. **Killing a General wins the battle instantly!** Displayed as a gold star. 4.5 HP, 3 ATK, 5 Move, 12 Max Stamina. <strong>Nearby units gain 1.2× damage!</strong></li>
+        <li><strong>Carthage Infantry (CART INF):</strong> Carthaginian heavy infantry. Used by Carthage in Cannae/Zama.</li>
+        <li><strong>Carthage Cavalry (CART CAV):</strong> Carthaginian cavalry. Used by Carthage in Cannae/Zama. Half stamina for actions like Roman cavalry.</li>
+        <li><strong>Elephant (EL):</strong> Carthaginian war elephant, massive HP/damage, slow but deadly. Blockbuster in Cannae/Zama.</li>
+        <li><strong>Warrior (WAR):</strong> Barbarian infantry. Only in random/Teutoburg.</li>
+        <li><strong>Archer (ARCH):</strong> Barbarian archer. Only in random/Teutoburg.</li>
+      </ul>
+      <h3>���️ Structures</h3>
+      <ul>
+        <li><strong>Tower:</strong> Archers can garrison towers. Towers <span class="highlight">reveal enemies in trees within a 5×5 area</span> and grant archers <span class="highlight">×3 damage multiplier</span>. Towers have a shield that absorbs the first hit.</li>
+        <li><strong>Wall:</strong> Infantry (non-archers, non-cavalry) can occupy walls. Units on walls gain <span class="highlight">2× defense (damage halved)</span> and <span class="highlight">1.5× attack power</span>.</li>
+      </ul>
+      <h3>🌍 Terrain & Visibility</h3>
+      <ul>
+        <li><strong>Plains:</strong> Open ground. No penalties. Movement cost = 1.</li>
+        <li><strong>Trees:</strong> Dense forest. <span class="highlight">AI units in trees are invisible unless you're adjacent or have a tower nearby</span>. Your units in trees show a 👁️ icon. Movement cost = 2.</li>
+        <li><strong>Mountains:</strong> High terrain. Uphill charges deal more damage (1.5× for most units, 3× for cavalry). Higher elevation = higher movement cost (3 or 4 stamina).</li>
+        <li><strong>Water/Lakes:</strong> Very difficult terrain. Cannot be crossed normally but can be forced at huge stamina cost (8 stamina per tile).</li>
+        <li><strong>Tower Reveal:</strong> A tower reveals any unit in a 5×5 area around it (Chebyshev distance ≤ 2), even if hiding in trees.</li>
+      </ul>
+      <h3>✨ General Aura</h3>
+      <ul>
+        <li><strong>General Buff:</strong> All friendly units within a 3×3 area around a General deal <span class="highlight">1.2× damage</span>.</li>
+        <li><strong>Strategic Positioning:</strong> Keep your General near key units to amplify their effectiveness.</li>
+        <li><strong>Risk:</strong> Protecting your General is critical—if killed, you lose immediately!</li>
+      </ul>
+      <h3>📊 Battle Status & Sidebar</h3>
+      <ul>
+        <li><strong>Sidebar (right panel):</strong> Shows all current units, their stats, stamina levels, structures, and battle information.</li>
+        <li><strong>Status Bar (top):</strong> Displays whose turn it is and current game phase.</li>
+        <li><strong>Unit Info:</strong> When you select a unit, shows its stats (HP, ATK, Move Range). A healing button also appears!</li>
+      </ul>
+      <h3>🎯 Random Deployment Strategy Tips</h3>
+      <ul>
+        <li>You deploy on rows 7-9 (bottom). AI deploys on rows 0-2 (top).</li>
+        <li>Place ranged units (archers) on towers for protection and damage boost.</li>
+        <li>Place melee units on walls for defense advantage.</li>
+        <li>Spread cavalry across your formation for quick flanking maneuvers (but remember: ONE attack per turn!).</li>
+        <li>Protect your general—if they're exposed and killed, you lose instantly!</li>
+      </ul>
+      <h3>⚙️ Combat Strategy Tips</h3>
+      <ul>
+        <li><strong>Stamina Management:</strong> Don't waste stamina on mountain crossings unless necessary. Plan efficient routes.</li>
+        <li><strong>Cavalry Efficiency:</strong> Use cavalry to scout and harass with ONE focused attack per turn because they only use half stamina.</li>
+        <li><strong>Cavalry Positioning:</strong> Position cavalry for maximum impact with that single attack—flank weak units or finish wounded enemies.</li>
+        <li><strong>Ranged Support:</strong> Keep archers on towers or walls to maximize damage while staying safe.</li>
+        <li><strong>Uphill Charges:</strong> Attack downhill enemies for damage bonus (charge from higher ground to lower).</li>
+        <li><strong>Tree Advantages:</strong> Hide units in trees before attacking. AI can't see you unless they're adjacent.</li>
+        <li><strong>General Hunt:</strong> If you spot the enemy General, focus fire to eliminate them and win instantly!</li>
+        <li><strong>General Aura:</strong> Position your General to support key attackers with 1.2× damage multiplier.</li>
+        <li><strong>Healing:</strong> Use the ❤️ Heal button to recover units strategically. 6 stamina = 1/8 HP is efficient for mid-battle recovery.</li>
+      </ul>
+      <h3>🎮 Controls During Battle</h3>
+      <ul>
+        <li><strong>Click a unit:</strong> Select it (white border appears). Healing button appears if player-controlled.</li>
+        <li><strong>Click highlighted tile:</strong> Move to that tile or attack.</li>
+        <li><strong>Click another unit:</strong> Switch selection.</li>
+        <li><strong>Heal Button (❤️):</strong> Click to heal selected unit (6 stamina → 1/8 HP). Only works if you have enough stamina.</li>
+        <li><strong>Next Turn button:</strong> End your actions. AI will then move 2-4 units.</li>
+        <li><strong>Skip Animation button:</strong> Skip the AI animation and move immediately to next turn.</li>
+      </ul>
+      <h3>🏆 Winning & Losing</h3>
+      <ul>
+        <li><strong>You Win If:</strong>
+          <ul>
+            <li>You eliminate all enemy units, OR</li>
+            <li>You kill the enemy General (instant victory!)</li>
+          </ul>
+        </li>
+        <li><strong>You Lose If:</strong>
+          <ul>
+            <li>All your units are eliminated, OR</li>
+            <li>Your General is killed (instant defeat!)</li>
+          </ul>
+        </li>
+      </ul>
+      <h3>📝 Unit Bar Explanations</h3>
+      <ul>
+        <li><strong>Top Bar (Green):</strong> HP (health points). When it reaches 0, the unit dies.</li>
+        <li><strong>Bottom Bar (Red):</strong> Stamina. When depleted, the unit cannot act until next turn.</li>
+      </ul>
+      <h3>🔍 Unit Labels on Board</h3>
+      <ul>
+        <li><strong>LEG:</strong> Legionary</li>
+        <li><strong>HAST:</strong> Hastati</li>
+        <li><strong>PRIN:</strong> Princeps</li>
+        <li><strong>TRIA:</strong> Triarii</li>
+        <li><strong>VEL:</strong> Velites</li>
+        <li><strong>SAG:</strong> Sagittarii</li>
+        <li><strong>CAL:</strong> Equites Cavalry</li>
+        <li><strong>GEN:</strong> General (gold star)</li>
+        <li><strong>CART INF:</strong> Carthage Infantry</li>
+        <li><strong>CART CAV:</strong> Carthage Cavalry</li>
+        <li><strong>EL:</strong> Elephant</li>
+        <li><strong>WAR:</strong> Barbarian/Teutonic Warrior</li>
+        <li><strong>ARCH:</strong> Barbarian/Teutonic Archer</li>
+      </ul>
+      <button class="closeBtn" onclick="closeHow()">Close Guide</button>
+    </div>
+  </div>
+<script>
+// ---------- UNIT DATA ----------
+const baseMaxLimits = { legionary:5, hastati:5, princeps:4, triari:2, velites:4, sagittarii:3, equites:3 };
+
+const unitTypes = {
+  legionary:     {hp:3,   atk:1, move:3, range:1, label:'LEG',  full:'Legionary', isCavalry:false, isArcher:false},
+  hastati:       {hp:3,   atk:1, move:3, range:1, label:'HAST', full:'Hastati',   isCavalry:false, isArcher:false},
+  princeps:      {hp:4,   atk:1, move:3, range:1, label:'PRIN', full:'Princeps',  isCavalry:false, isArcher:false},
+  triari:        {hp:4,   atk:2, move:3, range:1, label:'TRIA', full:'Triarii',   isCavalry:false, isArcher:false},
+  velites:       {hp:2,   atk:2, move:3, range:2, label:'VEL',  full:'Velites',   isCavalry:false, isArcher:true },
+  sagittarii:    {hp:2,   atk:2, move:3, range:2, label:'SAG',  full:'Sagittarii',isCavalry:false, isArcher:true },
+  equites:       {hp:3,   atk:2, move:5, range:1, label:'CAL',  full:'Equites',   isCavalry:true,  isArcher:false},
+  general:       {hp:4.5, atk:3, move:5, range:1, label:'GEN',  full:'General',   isCavalry:true,  isArcher:false,isGeneral:true},
+  // Carthage
+  carth_infantry:{hp:3,   atk:2, move:3, range:1, label:'CART INF', full:'Carthage Infantry', isCavalry:false, isArcher:false},
+  carth_cavalry: {hp:3,   atk:2, move:5, range:1, label:'CART CAV', full:'Carthage Cavalry', isCavalry:true,  isArcher:false},
+  elephant:      {hp:6,   atk:3, move:2, range:1, label:'EL',       full:'Elephant',         isCavalry:true,  isArcher:false},
+  // Barbarians/Teutonic
+  warrior:       {hp:3,   atk:1, move:3, range:1, label:'WAR',      full:'Warrior',         isCavalry:false, isArcher:false},
+  archer:        {hp:2,   atk:2, move:3, range:2, label:'ARCH',     full:'Archer',          isCavalry:false, isArcher:true },
+  noble_cav:     {hp:4,   atk:2, move:5, range:1, label:'CAV',      full:'Noble Cavalry',   isCavalry:true,  isArcher:false},
+  horse_warrior: {hp:3,   atk:2, move:5, range:1, label:'HWAR',     full:'Horse Warrior',   isCavalry:true,  isArcher:false},
+};
+
+const aiUnitPoolTemplate = [
+  {type:'warrior',hp:3,atk:1,move:3,range:1,label:'WAR'},
+  {type:'archer',hp:2,atk:2,move:3,range:2,label:'ARCH'},
+  {type:'noble_cav',hp:4,atk:2,move:5,range:1,label:'CAV'},
+  {type:'horse_warrior',hp:3,atk:2,move:5,range:1,label:'HWAR'}
+];
+
+// ---------- GLOBAL GAME STATE ----------
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const gridSize = 10;
+const cellSize = canvas.width / gridSize;
+
+let units = [];
+let structures = [];
+let heightMap = [];
+let terrainPatches = [];
+let scenario = null;
+let gameMode = 'random';
+let isHistorical = false;
+let deployPhase = true;
+let deployTurn = null;
+
+let playerRemaining = 0, aiRemaining = 0;
+const towerMax = 2, wallMax = 3;
+let towersRemaining = 0, wallsRemaining = 0;
+
+let currentUnitType = null, currentBuildType = null;
+let possibleMoves = [], selected = null;
+let turn = 'deploy';
+let skipAnimation = false;
+
+const statusEl = document.getElementById('status');
+const scenarioText = document.getElementById('scenarioText');
+const deployArea = document.getElementById('deployArea');
+const currentUnitEl = document.getElementById('currentUnit');
+const legendContentEl = document.getElementById('legendContent');
+const combatControls = document.getElementById('combatControls');
+const nextTurnBtn = document.getElementById('nextTurnBtn');
+const skipWaitBtn = document.getElementById('skipWaitBtn');
+const healBtn = document.getElementById('healBtn');
+const menuOverlay = document.getElementById('menuOverlay');
+const mainMenu = document.getElementById('mainMenu');
+const battleSelection = document.getElementById('battleSelection');
+
+// ---------- UTILITY ----------
+function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function initEmpty(){
+  units = Array(gridSize).fill().map(()=>Array(gridSize).fill(null));
+  structures = Array(gridSize).fill().map(()=>Array(gridSize).fill(null));
+  heightMap = Array(gridSize).fill().map(()=>Array(gridSize).fill(0));
+  terrainPatches = [];
+}
+function createUnit(team,type,hp,atk,move,range,label,isGeneral=false){
+  const flags = unitTypes[type] || {};
+  let finalHp = hp, finalAtk = atk, finalStamina = 8;
+  if (isGeneral) {
+    finalHp = Math.round(hp * 1.5 * 10) / 10;
+    finalAtk = Math.round(atk * 1.5 * 10) / 10;
+    finalStamina = Math.round(8 * 1.5);
+  }
+  return { 
+    team, type, hp: finalHp, maxHp: finalHp, atk: finalAtk, move, range, label: isGeneral ? 'GEN' : label, moved:false, 
+    isCavalry:!!flags.isCavalry, isArcher:!!flags.isArcher, isGeneral: isGeneral,
+    stamina: finalStamina,
+    maxStamina: finalStamina,
+    attacksUsed: 0 // For cavalry attack restriction
+  };
+}
+function createStructure(kind, opts={}){
+  if (kind === 'tower') return { structureType:'tower', hp:opts.hp||3, shield:!!opts.shield, cityWall:!!opts.cityWall };
+  if (kind === 'wall') return { structureType:'wall', hp:opts.hp||6, cityWall:!!opts.cityWall };
+  if (kind === 'flag') return { structureType:'flag' };
+  return null;
+}
+
+// ---------- TERRAIN GEN ----------
+function generateHeightMap(){
+  heightMap = Array(gridSize).fill().map(()=>Array(gridSize).fill(0));
+  for (let i=0;i<8;i++){
+    const x = rand(0,gridSize-1), y = rand(0,gridSize-1);
+    const level = 1 + Math.floor(Math.random()*2);
+    const size = 2 + Math.floor(Math.random()*2);
+    for (let dx=0; dx<size; dx++) for (let dy=0; dy<size; dy++){ const nx=x+dx, ny=y+dy; if (nx<gridSize && ny<gridSize) heightMap[ny][nx] = Math.max(heightMap[ny][nx], level); }
+  }
+}
+function generateRandomTrees(){
+  const patches=[];
+  const num=3 + Math.floor(Math.random()*3);
+  for (let i=0;i<num;i++){ const size=1+Math.floor(Math.random()*2); const x=rand(0,gridSize-size), y=rand(0,gridSize-size); patches.push({x,y,size,type:'trees'}); }
+  return patches;
+}
+function generateCentralLake(){ const lakeSize = 2 + Math.floor(Math.random()*2); const cx = 3 + Math.floor(Math.random()*4); const cy = 3 + Math.floor(Math.random()*4); return [{x:cx,y:cy,size:lakeSize,type:'lake'}]; }
+
+// ---------- OCCUPATION & VISIBILITY ----------
+function isInTrees(x,y){ return terrainPatches.some(p=>p.type==='trees' && x>=p.x && x<p.x+p.size && y>=p.y && y<p.y+p.size); }
+function isInWater(x,y){ return terrainPatches.some(p=>p.type==='lake' && x>=p.x && x<p.x+p.size && y>=p.y && y<p.y+p.size); }
+function isAdjacentToPlayer(x,y){ const dirs=[[0,1],[0,-1],[1,0],[-1,0]]; for (let [dx,dy] of dirs){ const nx=x+dx, ny=y+dy; if (nx>=0&&nx<gridSize&&ny>=0&&ny<gridSize){ const u = units[ny][nx]; if (u && u.team==='player') return true; } } return false; }
+function towerRevealsTile(x,y){
+  for (let ty=Math.max(0,y-2); ty<=Math.min(gridSize-1,y+2); ty++)
+    for (let tx=Math.max(0,x-2); tx<=Math.min(gridSize-1,x+2); tx++)
+      { const s = structures[ty][tx]; if (s && s.structureType === 'tower') return true; }
+  return false;
+}
+function isVisibleToPlayer(x,y){
+  const u = units[y][x];
+  if (!u) return false;
+  if (u.team === 'player') return true;
+  if (!isInTrees(x,y)) return true;
+  if (isAdjacentToPlayer(x,y)) return true;
+  if (towerRevealsTile(x,y)) return true;
+  return false;
+}
+function isTerrainBlocked(x,y,movingUnit){
+  if (isInWater(x,y)) return true;
+  const s = structures[y][x];
+  if (s){
+    if (s.structureType === 'wall'){
+      if (movingUnit){ if (!movingUnit.isArcher && !movingUnit.isCavalry) return false; }
+      return true;
+    }
+    if (s.structureType === 'tower'){
+      if (movingUnit){ if (movingUnit.isArcher) return false; }
+      return true;
+    }
+    if (s.structureType === 'flag') return false;
+  }
+  return false;
+}
+
+// ---------- GENERAL AURA ----------
+function getGeneralAuraMultiplier(x, y, team){
+  for (let dy=-1; dy<=1; dy++)
+    for (let dx=-1; dx<=1; dx++)
+      { const nx = x+dx, ny = y+dy;
+        if (nx<0||nx>=gridSize||ny<0||ny>=gridSize) continue;
+        const u = units[ny][nx];
+        if (u && u.isGeneral && u.team === team) return 1.2;
+      }
+  return 1.0;
+}
+
+// ---------- MOVEMENT & PATHFINDING ----------
+function getHeightCost(sx,sy,tx,ty){ const dh = heightMap[ty][tx] - heightMap[sy][sx]; return dh>0 ? dh : 0; }
+function getMovementCost(sx,sy,tx,ty,unit){
+  if (!unit) return 1;
+  let baseCost = 1;
+  if (isInWater(tx,ty)) baseCost = 8;
+  else {
+    const dh = getHeightCost(sx,sy,tx,ty);
+    if (dh === 1) baseCost = 3;
+    else if (dh >= 2) baseCost = 4;
+    else if (isInTrees(tx,ty)) baseCost = 2;
+    else baseCost = 1;
+  }
+  if (unit.isCavalry) baseCost = Math.ceil(baseCost / 2);
+  return baseCost;
+}
+function getPossibleMoves(sx,sy){
+  const unit = units[sy][sx]; if (!unit) return [];
+  const moves = []; const maxDist = unit.move;
+  const visited = Array(gridSize).fill().map(()=>Array(gridSize).fill(Infinity));
+  visited[sy][sx] = 0;
+  const queue = [{x:sx,y:sy,cost:0}];
+  while (queue.length){
+    const q = queue.shift();
+    if (q.cost > maxDist) continue;
+    const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+    for (let [dx,dy] of dirs){
+      const nx = q.x+dx, ny = q.y+dy;
+      if (nx<0||nx>=gridSize||ny<0||ny>=gridSize) continue;
+      if (isTerrainBlocked(nx,ny,unit)) {
+        const s = structures[ny][nx];
+        if (s && s.structureType === 'wall' && s.hp>0) {
+          const stepCost = getMovementCost(q.x,q.y,nx,ny,unit);
+          if (q.cost + stepCost <= maxDist) moves.push({x:nx,y:ny,type:'attack-structure'});
+        }
+        continue;
+      }
+      const stepCost = getMovementCost(q.x,q.y,nx,ny,unit);
+      const newCost = q.cost + stepCost;
+      if (newCost <= maxDist && visited[ny][nx] > newCost){
+        visited[ny][nx] = newCost;
+        queue.push({x:nx,y:ny,cost:newCost});
+        if (!units[ny][nx] || units[ny][nx].team === 'ai') moves.push({x:nx,y:ny,type:'move',cost:newCost});
+      }
+    }
+  }
+  // CAVALRY RESTRICTION: Only add attack moves if cavalry hasn't attacked yet
+  const canAttack = !unit.isCavalry || unit.attacksUsed === 0;
+  if (canAttack && !unit.isArcher){
+    for (let dy=-1; dy<=1; dy++)
+      for (let dx=-1; dx<=1; dx++){
+        if (dx === 0 && dy === 0) continue;
+        const tx = sx+dx, ty = sy+dy;
+        if (tx<0||tx>=gridSize||ty<0||ty>=gridSize) continue;
+        if (units[ty][tx] && units[ty][tx].team === 'ai') moves.push({x:tx,y:ty,type:'melee'});
+        const s = structures[ty][tx];
+        if (s && (s.structureType === 'wall' || s.structureType === 'tower' || s.structureType === 'flag')) 
+          moves.push({x:tx,y:ty,type:'attack-structure'});
+      }
+    if (unit.label === 'TRIA'){
+      for (let ty=Math.max(0,sy-2); ty<=Math.min(gridSize-1,sy+2); ty++){
+        for (let tx=Math.max(0,sx-2); tx<=Math.min(gridSize-1,sx+2); tx++){
+          const d = Math.max(Math.abs(tx-sx), Math.abs(ty-sy));
+          if (d > 1 && d <= 2){
+            if (units[ty][tx] && units[ty][tx].team === 'ai') moves.push({x:tx,y:ty,type:'melee'});
+            const s = structures[ty][tx];
+            if (s && (s.structureType === 'wall' || s.structureType === 'tower')) 
+              moves.push({x:tx,y:ty,type:'attack-structure'});
+          }
+        }
+      }
+    }
+  }
+  if (canAttack && unit.isArcher){
+    const maxRange = unitOnTower(sx,sy) ? 4 : 3;
+    for (let ty=0; ty<gridSize; ty++)
+      for (let tx=0; tx<gridSize; tx++){
+        const d = Math.abs(tx-sx) + Math.abs(ty-sy);
+        if (d > 0 && d <= maxRange){
+          if (units[ty][tx] && units[ty][tx].team === 'ai') moves.push({x:tx,y:ty,type:'ranged'});
+          const s = structures[ty][tx];
+          if (s && (s.structureType === 'wall' || s.structureType === 'tower' || s.structureType === 'flag')) 
+            moves.push({x:tx,y:ty,type:'ranged-structure'});
+        }
+      }
+  }
+  return moves;
+}
+function findPath(sx,sy,tx,ty,unit){
+  const visited = Array(gridSize).fill().map(()=>Array(gridSize).fill(Infinity));
+  const parent = {};
+  const q = [{x:sx,y:sy,cost:0}];
+  visited[sy][sx] = 0; parent[`${sx},${sy}`] = null;
+  while (q.length){
+    const cur = q.shift();
+    if (cur.x === tx && cur.y === ty) break;
+    const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+    for (let [dx,dy] of dirs){
+      const nx = cur.x+dx, ny = cur.y+dy;
+      if (nx<0||nx>=gridSize||ny<0||ny>=gridSize) continue;
+      if (isTerrainBlocked(nx,ny,unit)) continue;
+      const stepCost = getMovementCost(cur.x,cur.y,nx,ny,unit);
+      const newCost = cur.cost + stepCost;
+      if (newCost < visited[ny][nx]){ visited[ny][nx]=newCost; parent[`${nx},${ny}`] = `${cur.x},${cur.y}`; q.push({x:nx,y:ny,cost:newCost}); }
+    }
+  }
+  const key = `${tx},${ty}`; if (!parent[key]) return null;
+  const path = []; let cur = key;
+  while (cur && parent[cur] !== null){ const [cx,cy] = cur.split(',').map(Number); path.push({x:cx,y:cy}); cur = parent[cur]; }
+  path.reverse(); return path;
+}
+
+// ---------- drawing & sidebar update ----------
+function unitOnWall(x,y){ const s = structures[y][x]; return s && s.structureType === 'wall'; }
+function unitOnTower(x,y){ const s = structures[y][x]; return s && s.structureType === 'tower'; }
+function archerTowerMultiplier(x,y,team){
+  for (let dy=-1; dy<=1; dy++) for (let dx=-1; dx<=1; dx++){
+    const nx=x+dx, ny=y+dy; if (nx<0||nx>=gridSize||ny<0||ny>=gridSize) continue;
+    const s = structures[ny][nx]; if (s && s.structureType === 'tower') { if (team==='player') return 3; }
+  } return 1;
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  
+  for (let y=0;y<gridSize;y++) for (let x=0;x<gridSize;x++){
+    const h = heightMap[y][x]; ctx.fillStyle = h>0 ? (h===1 ? '#8B4513' : '#654321') : '#a3c28a'; ctx.fillRect(x*cellSize,y*cellSize,cellSize,cellSize);
+    if (h>0){ ctx.fillStyle='#fff'; ctx.font='bold 14px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(h.toString(), (x+0.5)*cellSize, (y+0.5)*cellSize); }
+  }
+  
+  terrainPatches.forEach(p=>{ if (p.type==='lake'){ ctx.fillStyle='#4169E1'; ctx.fillRect(p.x*cellSize,p.y*cellSize,p.size*cellSize,p.size*cellSize); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(p.x*cellSize+2,p.y*cellSize+2,p.size*cellSize-4,p.size*cellSize-4); } });
+  
+  for (let i=0;i<=gridSize;i++){ ctx.strokeStyle='#aaa'; ctx.beginPath(); ctx.moveTo(i*cellSize,0); ctx.lineTo(i*cellSize,canvas.height); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,i*cellSize); ctx.lineTo(canvas.width,i*cellSize); ctx.stroke(); }
+
+  // structures
+  for (let y=0;y<gridSize;y++) for (let x=0;x<gridSize;x++){
+    const s = structures[y][x]; if (!s) continue;
+    if (s.structureType === 'wall'){ ctx.fillStyle = s.cityWall ? '#444' : '#666'; ctx.fillRect(x*cellSize+6,y*cellSize+6,cellSize-12,cellSize-12); ctx.fillStyle='#fff'; ctx.font='bold 12px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(`W:${s.hp}`, (x+0.5)*cellSize,(y+0.5)*cellSize); }
+    else if (s.structureType === 'tower'){ ctx.fillStyle='#8a7'; ctx.fillRect(x*cellSize+4,y*cellSize+4,cellSize-8,cellSize-8); ctx.fillStyle='#000'; ctx.font='bold 12px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(`T:${s.hp}${s.shield?'S':''}`, (x+0.5)*cellSize,(y+0.5)*cellSize); }
+    else if (s.structureType === 'flag'){ ctx.fillStyle='#ffd700'; ctx.beginPath(); ctx.moveTo(x*cellSize + cellSize*0.4, y*cellSize + cellSize*0.2); ctx.lineTo(x*cellSize + cellSize*0.75, y*cellSize + cellSize*0.35); ctx.lineTo(x*cellSize + cellSize*0.4, y*cellSize + cellSize*0.5); ctx.closePath(); ctx.fill(); ctx.fillStyle='#000'; ctx.font='11px Arial'; ctx.textAlign='center'; ctx.fillText('FLAG', (x+0.5)*cellSize,(y+0.75)*cellSize); }
+  }
+
+  // units
+  for (let y=0;y<gridSize;y++) for (let x=0;x<gridSize;x++){
+    const u = units[y][x]; if (!u) continue;
+    if (u.team === 'ai' && !isVisibleToPlayer(x,y)) continue;
+    const color = u.team === 'player' ? '#00f' : '#f00'; ctx.fillStyle=color;
+    
+    if (u.isGeneral) {
+      ctx.fillStyle = u.team === 'player' ? '#ffff00' : '#ff6600';
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+        const rad = cellSize * 0.4;
+        const px = (x + 0.5) * cellSize + rad * Math.cos(angle);
+        const py = (y + 0.5) * cellSize + rad * Math.sin(angle);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      
+      // General aura circle
+      ctx.strokeStyle = u.team === 'player' ? 'rgba(255,255,0,0.5)' : 'rgba(255,102,0,0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc((x+0.5)*cellSize, (y+0.5)*cellSize, cellSize*1.7, 0, Math.PI*2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle=color;
+      ctx.beginPath();
+      if (u.label === 'CAL' || u.label === 'CAV' || u.label === 'HWAR'){ ctx.moveTo((x+0.5)*cellSize,(y+0.2)*cellSize); ctx.lineTo((x+0.2)*cellSize,(y+0.8)*cellSize); ctx.lineTo((x+0.8)*cellSize,(y+0.8)*cellSize); ctx.closePath(); }
+      else if (u.label === 'TRIA') ctx.arc((x+0.5)*cellSize,(y+0.5)*cellSize,cellSize*0.45,0,Math.PI*2);
+      else if (['VEL','SAG','ARCH'].includes(u.label)) ctx.rect((x+0.15)*cellSize,(y+0.15)*cellSize,cellSize*0.7,cellSize*0.7);
+      else ctx.arc((x+0.5)*cellSize,(y+0.5)*cellSize,cellSize*0.4,0,Math.PI*2);
+      ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.stroke();
+    }
+    
+    // HP bar
+    ctx.fillStyle='#000'; ctx.fillRect((x+0.1)*cellSize,(y+0.88)*cellSize,cellSize*0.8,cellSize*0.08);
+    ctx.fillStyle='#0f0'; ctx.fillRect((x+0.1)*cellSize,(y+0.88)*cellSize,cellSize*0.8*(u.hp/u.maxHp),cellSize*0.08);
+
+    // Stamina bar (RED)
+    ctx.fillStyle='#333'; ctx.fillRect((x+0.1)*cellSize,(y+0.80)*cellSize,cellSize*0.8,cellSize*0.06);
+    const staminaColor = u.stamina >= u.maxStamina * 0.5 ? '#ff0000' : u.stamina >= u.maxStamina * 0.25 ? '#ff6600' : '#ff3300';
+    ctx.fillStyle = staminaColor;
+    ctx.fillRect((x+0.1)*cellSize,(y+0.80)*cellSize,cellSize*0.8*(u.stamina/u.maxStamina),cellSize*0.06);
+
+    ctx.fillStyle='#fff'; ctx.font='bold 12px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(u.label,(x+0.5)*cellSize,(y+0.5)*cellSize);
+    
+    // Show cavalry attack status
+    if (u.isCavalry && u.attacksUsed > 0) {
+      ctx.fillStyle='#ff0000'; ctx.font='bold 11px Arial'; ctx.fillText('⚔️',(x+0.8)*cellSize,(y+0.15)*cellSize);
+    }
+    
+    if (u.team === 'ai' && isInTrees(x,y) && isAdjacentToPlayer(x,y)) { ctx.fillStyle='#fff'; ctx.font='11px Arial'; ctx.fillText(u.label + ' (' + u.type + ')',(x+0.5)*cellSize,(y-0.15)*cellSize); }
+  }
+
+  // trees
+  terrainPatches.forEach(p=>{ if (p.type==='trees'){ ctx.fillStyle='#228B22'; ctx.fillRect(p.x*cellSize,p.y*cellSize,p.size*cellSize,p.size*cellSize); ctx.fillStyle='#32CD32'; for (let tx=p.x; tx<p.x+p.size; tx++) for (let ty=p.y; ty<p.y+p.size; ty++){ ctx.beginPath(); ctx.arc((tx+0.3)*cellSize,(ty+0.7)*cellSize,cellSize*0.15,0,Math.PI*2); ctx.fill(); } } });
+
+  // player in tree icon
+  for (let y=0;y<gridSize;y++) for (let x=0;x<gridSize;x++){ const u = units[y][x]; if (u && u.team==='player' && isInTrees(x,y)){ ctx.fillStyle='#ff0'; ctx.font='bold 18px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('👁️',(x+0.8)*cellSize,(y+0.2)*cellSize); } }
+
+  // highlights & selection
+  possibleMoves.forEach(m=>{ ctx.fillStyle='rgba(255,255,0,0.35)'; ctx.fillRect(m.x*cellSize+2,m.y*cellSize+2,cellSize-4,cellSize-4); });
+  if (selected){ ctx.strokeStyle='#ff0'; ctx.lineWidth=4; ctx.strokeRect(selected.x*cellSize+4,selected.y*cellSize+4,cellSize-8,cellSize-8); }
+
+  updateLegend();
+}
+
+// ---------- sidebar content ----------
+function updateLegend(){
+  const lines = [];
+  lines.push(`<div class="legend-section"><strong>Battle Status</strong>`);
+  lines.push(`<div class="small-muted">Player units: ${playerRemaining}</div>`);
+  lines.push(`<div class="small-muted">AI units: ${aiRemaining}</div>`);
+  lines.push(`<div class="small-muted">Turn: ${turn === 'player' ? 'PLAYER' : 'AI'}</div>`);
+  lines.push(`<div class="small-muted">Mode: ${isHistorical ? gameMode : 'Random Battle'}</div>`);
+  lines.push('</div>');
+
+  lines.push(`<div class="legend-section"><strong>Structures</strong>`);
+  let anyS=false;
+  for (let y=0;y<gridSize;y++) for (let x=0;x<gridSize;x++){ const s = structures[y][x]; if (s){ anyS=true; lines.push(`<div class="unit-row">${s.structureType.toUpperCase()} at (${x},${y}) HP:${s.hp||'-'}${s.shield?' SHIELD':''}</div>`); } }
+  if (!anyS) lines.push(`<div class="small-muted">None</div>`);
+  lines.push('</div>');
+
+  lines.push(`<div class="legend-section"><strong>Units (all)</strong>`);
+  let anyU=false;
+  for (let y=0;y<gridSize;y++) for (let x=0;x<gridSize;x++){ 
+    const u = units[y][x]; 
+    if (u){ 
+      anyU=true; 
+      const attackStatus = u.isCavalry && u.attacksUsed > 0 ? ' [ATTACKED]' : '';
+      lines.push(`<div class="unit-row">${u.team.toUpperCase()} ${u.label} (${u.type}) at (${x},${y}) HP:${u.hp.toFixed(1)}/${u.maxHp.toFixed(1)} STA:${u.stamina}/${u.maxStamina}${u.isGeneral?' [GEN]':''}${attackStatus}</div>`); 
+    } 
+  }
+  if (!anyU) lines.push(`<div class="small-muted">None</div>`);
+  lines.push('</div>');
+
+  lines.push(`<div class="legend-section"><strong>Stamina Info</strong>`);
+  lines.push(`<div class="small-muted"><strong>Start:</strong> 8 (12 for generals) | <strong>Recovery:</strong> 4/turn</div>`);
+  lines.push(`<div class="small-muted"><strong>Movement:</strong> Plains 1, Trees 2, Mtns 3-4, Water 8</div>`);
+  lines.push(`<div class="small-muted"><strong>Cavalry:</strong> HALF costs | <strong>Attack:</strong> Melee 4, Ranged 3, Heal 6</div>`);
+  lines.push(`<div class="small-muted"><strong>⚔️ CAVALRY ATTACKS:</strong> 1 per turn ONLY!</div>`);
+  lines.push('</div>');
+
+  lines.push(`<div class="legend-section"><strong>Generals & Aura</strong>`);
+  lines.push(`<div class="small-muted">Generals have 1.5× HP, ATK, stamina. Nearby units (3×3) get 1.2× damage!</div>`);
+  lines.push('</div>');
+
+  legendContentEl.innerHTML = lines.join('');
+}
+
+// ---------- deployment & AI ----------
+function aiAutoDeployAll(){
+  const aiUnits = scenario.aiUnits.slice();
+  const placeRows = [0,1,2];
+
+  for (let u of aiUnits){
+    let attempts=0;
+    while (attempts<800){
+      attempts++;
+      const rx = rand(0,gridSize-1), ry = placeRows[rand(0,placeRows.length-1)];
+      if (!units[ry][rx] && !isTerrainBlocked(rx,ry,null) && !structures[ry][rx]){
+        const label = u.label || 'AI';
+        const type = u.type || 'warrior';
+        units[ry][rx] = createUnit('ai', type, u.hp, u.atk, u.move, u.range||1, label, u.isGeneral);
+        break;
+      }
+    }
+  }
+}
+
+function finishDeployment(){
+  deployPhase = false;
+  if (!isHistorical && playerRemaining > 0) { statusEl.textContent = `Deploy: place remaining ${playerRemaining}`; return; }
+  
+  turn = 'player';
+  statusEl.textContent = 'Battle Start! Click a unit to move/attack. Press "Next Turn" when done.';
+  combatControls.style.display = 'flex';
+  draw();
+}
+
+function resetMovedFlags(){ 
+  for (let y=0;y<gridSize;y++) for (let x=0;x<gridSize;x++) {
+    if (units[y][x]) {
+      units[y][x].moved = false;
+      units[y][x].attacksUsed = 0;  // NEW: Reset cavalry attacks each turn
+      if (!units[y][x].isCavalry) {
+        units[y][x].stamina = Math.min(units[y][x].maxStamina, units[y][x].stamina + 4);
+      } else {
+        units[y][x].stamina = Math.min(units[y][x].maxStamina, units[y][x].stamina + 2);
+      }
+    }
+  }
+}
+
+function checkWin(){
+  for (let y=0;y<gridSize;y++) for (let x=0;x<gridSize;x++){
+    const u = units[y][x];
+    if (u && u.isGeneral){
+      if (u.team === 'player' && u.hp <= 0){ alert('Your General was defeated! AI wins!'); openMenu(); return true; }
+      if (u.team === 'ai' && u.hp <= 0){ alert('Enemy General defeated! YOU WIN!'); openMenu(); return true; }
+    }
+  }
+  
+  let p=false,a=false;
+  for (let y=0;y<gridSize;y++) for (let x=0;x<gridSize;x++){ const u=units[y][x]; if (u){ if (u.team==='player') p=true; if (u.team==='ai') a=true; } }
+  if (!p){ setTimeout(()=>{ alert('All units defeated! AI wins!'); openMenu(); },50); return true; }
+  if (!a){ setTimeout(()=>{ alert('All enemy units defeated! YOU WIN!'); openMenu(); },50); return true; }
+  return false;
+}
+
+function executeDamage(attacker, ax,ay, defender, dx,dy, isRanged=false, againstStructure=null){
+  let attackMult = 1;
+  if (attacker.isArcher) attackMult *= archerTowerMultiplier(ax,ay,attacker.team);
+  if (unitOnWall(ax,ay) && !attacker.isCavalry) attackMult *= 1.5;
+  attackMult *= getGeneralAuraMultiplier(ax,ay,attacker.team);
+  
+  let raw = Math.floor(attacker.atk * attackMult);
+  if (isRanged && attacker.isArcher && isInTrees(ax,ay)) raw += 1;
+  if (defender && unitOnWall(dx,dy) && !defender.isCavalry) raw = Math.ceil(raw/2);
+  
+  const staminaCost = isRanged ? 3 : 4;
+  let totalCost = staminaCost;
+  if (attacker.isCavalry) totalCost = Math.ceil(totalCost / 2);
+  attacker.stamina = Math.max(0, attacker.stamina - totalCost);
+  
+  // NEW: Mark cavalry as having attacked
+  if (attacker.isCavalry) {
+    attacker.attacksUsed++;
+  }
+  
+  if (againstStructure){
+    if (againstStructure.structureType === 'tower'){
+      if (againstStructure.shield){ againstStructure.shield = false; return; }
+      else { againstStructure.hp -= raw; if (againstStructure.hp <= 0) structures[dy][dx] = null; return; }
+    }
+    if (againstStructure.structureType === 'wall'){ againstStructure.hp -= raw; if (againstStructure.hp <= 0) structures[dy][dx] = null; return; }
+    if (againstStructure.structureType === 'flag'){ return; }
+  }
+  if (defender){ defender.hp -= raw; if (defender.hp <= 0) units[dy][dx] = null; }
+}
+
+// ---------- Heal function ----------
+function healSelectedUnit(){
+  if (!selected) return;
+  const u = units[selected.y][selected.x];
+  if (!u || u.team !== 'player') return;
+  
+  const healCost = 6;
+  if (u.stamina < healCost) {
+    statusEl.textContent = 'Not enough stamina to heal!';
+    return;
+  }
+  
+  const healAmount = u.maxHp / 8;
+  u.hp = Math.min(u.maxHp, u.hp + healAmount);
+  u.stamina -= healCost;
+  
+  statusEl.textContent = `Unit healed! +${healAmount.toFixed(2)} HP (${u.stamina} STA remaining)`;
+  draw();
+}
+
+// ---------- main click handler ----------
+function getMousePos(e){ const rect = canvas.getBoundingClientRect(); return { x: Math.floor((e.clientX - rect.left)/cellSize), y: Math.floor((e.clientY - rect.top)/cellSize) }; }
+
+function handleClick(e){
+  const {x,y} = getMousePos(e); if (x<0||x>=gridSize||y<0||y>=gridSize) return;
+
+  if (deployPhase && !isHistorical){
+    if (deployTurn !== 'player') return;
+    if (currentBuildType){
+      if (currentBuildType === 'tower'){ if (towersRemaining<=0) return; if (structures[y][x]||units[y][x]||isTerrainBlocked(x,y,null)) return; structures[y][x]=createStructure('tower',{hp:3,shield:true}); towersRemaining--; buildDeployButtons(scenario.playerLimits); draw(); return; }
+      if (currentBuildType === 'wall'){ if (wallsRemaining<=0) return; if (structures[y][x]||units[y][x]||isTerrainBlocked(x,y,null)) return; structures[y][x]=createStructure('wall',{hp:8,cityWall:false}); wallsRemaining--; buildDeployButtons(scenario.playerLimits); draw(); return; }
+    }
+    if (currentUnitType){
+      if (!scenario.playerLimits[currentUnitType] || scenario.playerLimits[currentUnitType] <= 0) return;
+
+      const allowedRows = [7,8,9];
+      if (!allowedRows.includes(y)) return;
+
+      const s = structures[y][x];
+      if (s){
+        if (s.structureType === 'tower'){ if (!unitTypes[currentUnitType].isArcher) return; if (units[y][x]) return; units[y][x] = createUnit('player', currentUnitType, unitTypes[currentUnitType].hp, unitTypes[currentUnitType].atk, unitTypes[currentUnitType].move, unitTypes[currentUnitType].range, unitTypes[currentUnitType].label); scenario.playerLimits[currentUnitType]--; playerRemaining--; buildDeployButtons(scenario.playerLimits); draw(); }
+        else if (s.structureType === 'wall'){ if (unitTypes[currentUnitType].isArcher || unitTypes[currentUnitType].isCavalry) return; if (units[y][x]) return; units[y][x] = createUnit('player', currentUnitType, unitTypes[currentUnitType].hp, unitTypes[currentUnitType].atk, unitTypes[currentUnitType].move, unitTypes[currentUnitType].range, unitTypes[currentUnitType].label); scenario.playerLimits[currentUnitType]--; playerRemaining--; buildDeployButtons(scenario.playerLimits); draw(); }
+      } else {
+        if (units[y][x]||isTerrainBlocked(x,y,null)) return;
+        units[y][x] = createUnit('player', currentUnitType, unitTypes[currentUnitType].hp, unitTypes[currentUnitType].atk, unitTypes[currentUnitType].move, unitTypes[currentUnitType].range, unitTypes[currentUnitType].label);
+        scenario.playerLimits[currentUnitType]--; playerRemaining--; buildDeployButtons(scenario.playerLimits); draw();
+      }
+
+      if (playerRemaining === 0){
+        deployTurn = 'ai';
+        statusEl.textContent = 'Deploying enemy...';
+        setTimeout(()=>{ aiAutoDeployAll(); finishDeployment(); }, 350);
+      } else statusEl.textContent = `Deploy: place remaining ${playerRemaining}`;
+    }
+    return;
+  }
+
+  // Combat phase
+  if (turn !== 'player') return;
+  const clickedUnit = units[y][x];
+
+  if (selected){
+    const sx = selected.x, sy = selected.y; const selUnit = units[sy][sx];
+    if (!selUnit || selUnit.team !== 'player'){ selected=null; possibleMoves=[]; healBtn.style.display='none'; draw(); return; }
+    const chosen = possibleMoves.find(m=>m.x===x && m.y===y);
+    if (!chosen){ if (clickedUnit && clickedUnit.team === 'player'){ selected={x,y}; possibleMoves=getPossibleMoves(x,y); healBtn.style.display='block'; draw(); return; } selected=null; possibleMoves=[]; healBtn.style.display='none'; draw(); return; }
+
+    // Perform action
+    if (chosen.type === 'melee'){ 
+      const target = units[y][x]; 
+      if (target && target.team==='ai') {
+        executeDamage(selUnit,sx,sy,target,x,y,false,null);
+      }
+    }
+    else if (chosen.type === 'ranged'){ 
+      const target = units[y][x]; 
+      if (target && target.team==='ai') {
+        executeDamage(selUnit,sx,sy,target,x,y,true,null);
+      }
+    }
+    else if (chosen.type === 'ranged-structure'){ const s = structures[y][x]; if (s) executeDamage(selUnit,sx,sy,null,x,y,true,s); }
+    else if (chosen.type === 'attack-structure'){ const s = structures[y][x]; if (s) executeDamage(selUnit,sx,sy,null,x,y,false,s); }
+    else { // move
+      const destUnit = units[y][x];
+      const heightDiff = heightMap[y][x] - heightMap[sy][sx];
+      const stepCost = getMovementCost(sx,sy,x,y,selUnit);
+      
+      if (selUnit.stamina < stepCost) {
+        statusEl.textContent = 'Not enough stamina to move!';
+        selected = null;
+        possibleMoves = [];
+        healBtn.style.display='none';
+        draw();
+        return;
+      }
+      
+      if (destUnit && destUnit.team === 'ai'){
+        let multH = (heightDiff > 0) ? (selUnit.isArcher ? 2 : selUnit.isCavalry ? 3 : 1.5) : 1;
+        const tempAtt = Object.assign({}, selUnit, { atk: Math.floor(selUnit.atk * multH) });
+        executeDamage(tempAtt, sx,sy, destUnit, x,y, false, null);
+        if (!units[y][x]){ 
+          units[y][x] = selUnit; 
+          units[sy][sx] = null;
+          selUnit.stamina -= stepCost;
+        }
+      } else {
+        const s = structures[y][x];
+        if (!s){
+          if (!units[y][x] && !isTerrainBlocked(x,y,selUnit)){ 
+            units[y][x] = selUnit; 
+            units[sy][sx] = null;
+            selUnit.stamina -= stepCost;
+          }
+        } else {
+          if (s.structureType === 'tower' && selUnit.isArcher && !units[y][x]){ 
+            units[y][x] = selUnit; 
+            units[sy][sx] = null;
+            selUnit.stamina -= stepCost;
+          }
+          else if (s.structureType === 'wall' && !selUnit.isArcher && !selUnit.isCavalry && !units[y][x]){ 
+            units[y][x] = selUnit; 
+            units[sy][sx] = null;
+            selUnit.stamina -= stepCost;
+          }
+        }
+      }
+    }
+
+    selected = null; possibleMoves = []; healBtn.style.display='none'; draw();
+
+    if (checkWin()) return;
+  } else {
+    if (clickedUnit && clickedUnit.team === 'player'){ selected={x,y}; possibleMoves = getPossibleMoves(x,y); healBtn.style.display='block'; draw(); }
+  }
+}
+
+// ---------- AI multiple unit actions ----------
+function aiGetVisiblePlayerUnits(){
+  const vis=[];
+  for (let y=0;y<gridSize;y++) for (let x=0;x<gridSize;x++){
+    const u=units[y][x]; if (u && u.team==='player' && (!isInTrees(x,y) || isAdjacentToPlayer(x,y) || towerRevealsTile(x,y))) vis.push({x,y,unit:u});
+  }
+  return vis;
+}
+
+function aiActMultipleUnits(){
+  const visiblePlayers = aiGetVisiblePlayerUnits();
+  if (visiblePlayers.length === 0) return;
+  
+  const candidates = [];
+  for (let y=0;y<gridSize;y++) for (let x=0;x<gridSize;x++){ const u=units[y][x]; if (u && u.team==='ai') candidates.push({x,y,unit:u}); }
+
+  const actCount = Math.min(rand(2,4), candidates.length);
+  const actedUnits = new Set();
+  
+  for (let action=0; action<actCount; action++){
+    for (let c of candidates){
+      if (actedUnits.has(`${c.x},${c.y}`)) continue;
+      
+      // NEW: Check cavalry attack restriction
+      if (c.unit.isCavalry && c.unit.attacksUsed > 0) continue;
+      
+      for (let p of visiblePlayers){
+        const d = Math.abs(c.x-p.x)+Math.abs(c.y-p.y);
+        if (d <= c.unit.range && units[p.y][p.x]){ 
+          const target=units[p.y][p.x]; 
+          executeDamage(c.unit,c.x,c.y,target,p.x,p.y,d>1,null);
+          actedUnits.add(`${c.x},${c.y}`);
+          return;
+        }
+      }
+    }
+
+    let best=null, bestDist=Infinity, bestTarget=null;
+    for (let c of candidates){
+      if (actedUnits.has(`${c.x},${c.y}`)) continue;
+      for (let p of visiblePlayers){
+        const d = Math.abs(c.x-p.x)+Math.abs(c.y-p.y);
+        if (d < bestDist){ bestDist=d; best=c; bestTarget=p; }
+      }
+    }
+    
+    if (!best) break;
+    
+    const path = findPath(best.x,best.y,bestTarget.x,bestTarget.y,best.unit);
+    if (path && path.length>0){
+      let sx=best.x, sy=best.y, mpLeft=best.unit.move, finalPos={x:sx,y:sy};
+      for (let step of path){
+        const stepCost = getMovementCost(sx,sy,step.x,step.y,best.unit);
+        if (stepCost <= mpLeft && !isTerrainBlocked(step.x,step.y,best.unit)){ mpLeft -= stepCost; sx = step.x; sy = step.y; finalPos = {x:sx,y:sy}; if (units[sy][sx] && units[sy][sx].team==='player') break; } else break;
+      }
+      if (units[finalPos.y][finalPos.x] && units[finalPos.y][finalPos.x].team === 'player'){ 
+        const target = units[finalPos.y][finalPos.x]; 
+        executeDamage(best.unit,best.x,best.y,target,finalPos.x,finalPos.y,false,null); 
+        actedUnits.add(`${best.x},${best.y}`);
+      } else {
+        const s = structures[finalPos.y][finalPos.x];
+        if (s && (s.structureType === 'wall' && s.hp>0 || s.structureType === 'tower')){ 
+          if (s.structureType === 'tower' && s.shield) s.shield = false; 
+          else { s.hp -= best.unit.atk; if (s.hp <= 0) structures[finalPos.y][finalPos.x] = null; } 
+          actedUnits.add(`${best.x},${best.y}`);
+        } else if (!(units[finalPos.y][finalPos.x] && units[finalPos.y][finalPos.x].team === 'ai')){ 
+          units[finalPos.y][finalPos.x] = best.unit; 
+          units[best.y][best.x] = null;
+          actedUnits.add(`${best.x},${best.y}`);
+        }
+      }
+    }
+  }
+}
+
+// ---------- sidebar show/hide & removal ----------
+const legendPanel = document.getElementById('legendPanel');
+const legendClose = document.getElementById('legendClose');
+const openSidebarBtn = document.getElementById('openSidebarBtn');
+const legendRemove = document.getElementById('legendRemove');
+
+legendClose.addEventListener('click', ()=>{ legendPanel.style.display = 'none'; openSidebarBtn.style.display = 'block'; });
+openSidebarBtn.addEventListener('click', ()=>{ legendPanel.style.display = 'block'; openSidebarBtn.style.display = 'none'; });
+legendRemove.addEventListener('click', ()=>{ if (confirm('Remove sidebar permanently? Reload page to restore.')){ legendPanel.remove(); openSidebarBtn.remove(); }});
+
+// ---------- Menu functions ----------
+function openMenu(){
+  mainMenu.style.display = 'block';
+  battleSelection.style.display = 'none';
+  menuOverlay.style.display = 'flex';
+}
+
+function backToMainMenu(){
+  mainMenu.style.display = 'block';
+  battleSelection.style.display = 'none';
+}
+
+const playBtn = document.getElementById('playBtn');
+const howBtn = document.getElementById('howBtn');
+const howModal = document.getElementById('howModal');
+
+playBtn.addEventListener('click', ()=>{ 
+  mainMenu.style.display = 'none';
+  battleSelection.style.display = 'block';
+});
+
+howBtn.addEventListener('click', ()=>{ 
+  howModal.style.display = 'flex'; 
+});
+
+function closeHow(){ 
+  howModal.style.display = 'none'; 
+}
+
+// ---------- Choose battle function ----------
+function chooseBattle(battleName){
+  gameMode = battleName;
+  isHistorical = (battleName !== 'random');
+  menuOverlay.style.display = 'none';
+  startFromMenu();
+}
+
+// ---------- scenario generation ----------
+function distributePlayerUnitsSiege(total){
+  const counts = {}; Object.keys(baseMaxLimits).forEach(k=>counts[k]=0);
+  let remain = total;
+
+  const cavWant = Math.min(rand(1,2), baseMaxLimits.equites);
+  counts.equites = cavWant; remain -= cavWant;
+
+  const mainKeys = ['legionary','hastati','princeps','triari'];
+  let mainWant = Math.min(rand(6,10), mainKeys.reduce((s,k)=>s+baseMaxLimits[k],0));
+  mainWant = Math.min(mainWant, remain);
+  while (mainWant > 0){
+    const k = mainKeys[rand(0,mainKeys.length-1)];
+    if (counts[k] < baseMaxLimits[k]){ counts[k]++; mainWant--; remain--; }
+  }
+
+  const arKeys = ['velites','sagittarii'];
+  while (remain > 0){
+    const pool = arKeys.concat(mainKeys, ['equites']);
+    const k = pool[rand(0,pool.length-1)];
+    if (counts[k] < baseMaxLimits[k]){ counts[k]++; remain--; }
+    const capTotal = Object.keys(baseMaxLimits).reduce((s,k)=>s+baseMaxLimits[k],0);
+    if (Object.values(counts).reduce((s,n)=>s+n,0) >= capTotal) break;
+  }
+
+  return counts;
+}
+
+// ---------- Historical battle setups ----------
+function setupHistoricalBattle(battleType){
+  initEmpty();
+  generateHeightMap();
+  terrainPatches = generateRandomTrees();
+  if (Math.random() < 0.5) terrainPatches = terrainPatches.concat(generateCentralLake());
+
+  const setup = {
+    player: [],
+    ai: []
+  };
+
+  if (battleType === 'cannae'){
+    scenarioText.textContent = 'Battle of Cannae (216 BC) - Play as Rome vs Hannibal';
+    
+    setup.player = [
+      {x:5,y:9,type:'legionary'},{x:6,y:9,type:'legionary'},{x:4,y:9,type:'hastati'},
+      {x:5,y:8,type:'princeps'},{x:6,y:8,type:'princeps'},{x:4,y:8,type:'hastati'},
+      {x:5,y:7,type:'triari'},{x:6,y:7,type:'sagittarii'},{x:4,y:7,type:'velites'},
+      {x:3,y:9,type:'equites'},{x:7,y:9,type:'equites'},{x:3,y:8,type:'equites'},{x:7,y:8,type:'equites'},
+      {x:5,y:6,type:'general',isGeneral:true}
+    ];
+    
+    setup.ai = [
+      {x:5,y:0,type:'warrior'},{x:6,y:0,type:'warrior'},{x:4,y:0,type:'warrior'},
+      {x:3,y:1,type:'warrior'},{x:7,y:1,type:'warrior'},{x:2,y:1,type:'warrior'},{x:8,y:1,type:'warrior'},
+      {x:5,y:1,type:'archer'},{x:4,y:1,type:'archer'},{x:6,y:1,type:'archer'},
+      {x:2,y:0,type:'noble_cav'},{x:8,y:0,type:'noble_cav'},{x:1,y:1,type:'noble_cav'},{x:9,y:1,type:'noble_cav'},
+      {x:5,y:2,type:'general',isGeneral:true}
+    ];
+
+    playerRemaining = setup.player.length;
+    aiRemaining = setup.ai.length;
+  }
+  else if (battleType === 'teutoburg'){
+    scenarioText.textContent = 'Battle of Teutoburg Forest (9 AD) - Roman disaster in the forest';
+    
+    setup.player = [
+      {x:5,y:9,type:'legionary'},{x:6,y:9,type:'legionary'},{x:4,y:9,type:'legionary'},
+      {x:5,y:8,type:'hastati'},{x:6,y:8,type:'hastati'},{x:4,y:8,type:'princeps'},
+      {x:5,y:7,type:'princeps'},{x:6,y:7,type:'triari'},{x:4,y:7,type:'triari'},
+      {x:3,y:9,type:'sagittarii'},{x:7,y:9,type:'sagittarii'},{x:3,y:8,type:'velites'},
+      {x:5,y:6,type:'general',isGeneral:true}
+    ];
+    
+    setup.ai = [
+      {x:2,y:2,type:'warrior'},{x:8,y:2,type:'warrior'},{x:5,y:0,type:'warrior'},
+      {x:3,y:1,type:'warrior'},{x:7,y:1,type:'warrior'},{x:4,y:1,type:'archer'},{x:6,y:1,type:'archer'},
+      {x:1,y:3,type:'warrior'},{x:9,y:3,type:'warrior'},{x:5,y:1,type:'warrior'},
+      {x:2,y:0,type:'horse_warrior'},{x:8,y:0,type:'horse_warrior'},{x:4,y:0,type:'horse_warrior'},
+      {x:5,y:3,type:'general',isGeneral:true}
+    ];
+
+    playerRemaining = setup.player.length;
+    aiRemaining = setup.ai.length;
+  }
+  else if (battleType === 'phalaphiris'){
+    scenarioText.textContent = 'Battle of Phalaphiris (48 BC) - Caesar\'s victory';
+    
+    setup.player = [
+      {x:5,y:9,type:'legionary'},{x:6,y:9,type:'legionary'},{x:4,y:9,type:'hastati'},
+      {x:5,y:8,type:'princeps'},{x:6,y:8,type:'hastati'},{x:4,y:8,type:'legionary'},
+      {x:5,y:7,type:'velites'},{x:6,y:7,type:'sagittarii'},{x:4,y:7,type:'triari'},
+      {x:3,y:9,type:'equites'},{x:7,y:9,type:'equites'},
+      {x:5,y:6,type:'general',isGeneral:true}
+    ];
+    
+    setup.ai = [
+      {x:5,y:0,type:'warrior'},{x:6,y:0,type:'warrior'},{x:4,y:0,type:'warrior'},
+      {x:5,y:1,type:'archer'},{x:6,y:1,type:'archer'},{x:4,y:1,type:'warrior'},
+      {x:3,y:0,type:'noble_cav'},{x:7,y:0,type:'noble_cav'},{x:3,y:1,type:'warrior'},{x:7,y:1,type:'warrior'},
+      {x:5,y:2,type:'general',isGeneral:true}
+    ];
+
+    playerRemaining = setup.player.length;
+    aiRemaining = setup.ai.length;
+  }
+  else if (battleType === 'philipii'){
+    scenarioText.textContent = 'Battle of Philippi (42 BC) - Avengers of Caesar';
+    
+    setup.player = [
+      {x:4,y:9,type:'legionary'},{x:5,y:9,type:'legionary'},{x:6,y:9,type:'hastati'},
+      {x:4,y:8,type:'princeps'},{x:5,y:8,type:'hastati'},{x:6,y:8,type:'princeps'},
+      {x:4,y:7,type:'velites'},{x:5,y:7,type:'sagittarii'},{x:6,y:7,type:'triari'},
+      {x:3,y:9,type:'equites'},{x:7,y:9,type:'equites'},
+      {x:5,y:6,type:'general',isGeneral:true}
+    ];
+    
+    setup.ai = [
+      {x:5,y:0,type:'warrior'},{x:6,y:0,type:'warrior'},{x:4,y:0,type:'archer'},
+      {x:5,y:1,type:'warrior'},{x:6,y:1,type:'warrior'},{x:4,y:1,type:'warrior'},
+      {x:3,y:1,type:'noble_cav'},{x:7,y:1,type:'noble_cav'},{x:5,y:2,type:'warrior'},
+      {x:4,y:2,type:'archer'},{x:6,y:2,type:'archer'},
+      {x:5,y:3,type:'general',isGeneral:true}
+    ];
+
+    playerRemaining = setup.player.length;
+    aiRemaining = setup.ai.length;
+  }
+  else if (battleType === 'nile'){
+    scenarioText.textContent = 'Battle of the Nile (47 BC) - Caesar in Egypt';
+    
+    setup.player = [
+      {x:5,y:9,type:'legionary'},{x:6,y:9,type:'legionary'},{x:4,y:9,type:'hastati'},
+      {x:5,y:8,type:'princeps'},{x:6,y:8,type:'hastati'},{x:4,y:8,type:'legionary'},
+      {x:5,y:7,type:'velites'},{x:6,y:7,type:'sagittarii'},{x:4,y:7,type:'triari'},
+      {x:3,y:9,type:'equites'},{x:7,y:9,type:'equites'},
+      {x:5,y:6,type:'general',isGeneral:true}
+    ];
+    
+    setup.ai = [
+      {x:5,y:0,type:'warrior'},{x:6,y:0,type:'warrior'},{x:4,y:0,type:'warrior'},
+      {x:5,y:1,type:'archer'},{x:6,y:1,type:'archer'},{x:4,y:1,type:'warrior'},
+      {x:3,y:0,type:'noble_cav'},{x:7,y:0,type:'noble_cav'},{x:5,y:2,type:'warrior'},
+      {x:4,y:2,type:'archer'},{x:6,y:2,type:'archer'},
+      {x:5,y:3,type:'general',isGeneral:true}
+    ];
+
+    playerRemaining = setup.player.length;
+    aiRemaining = setup.ai.length;
+  }
+  else if (battleType === 'chaeronea'){
+    scenarioText.textContent = 'Battle of Chaeronea (86 BC) - Sulla\'s triumph';
+    
+    setup.player = [
+      {x:5,y:9,type:'legionary'},{x:6,y:9,type:'legionary'},{x:4,y:9,type:'legionary'},
+      {x:5,y:8,type:'hastati'},{x:6,y:8,type:'hastati'},{x:4,y:8,type:'princeps'},
+      {x:5,y:7,type:'velites'},{x:6,y:7,type:'sagittarii'},{x:4,y:7,type:'triari'},
+      {x:3,y:9,type:'equites'},{x:7,y:9,type:'equites'},
+      {x:5,y:6,type:'general',isGeneral:true}
+    ];
+    
+    setup.ai = [
+      {x:5,y:0,type:'warrior'},{x:6,y:0,type:'warrior'},{x:4,y:0,type:'warrior'},
+      {x:5,y:1,type:'archer'},{x:6,y:1,type:'archer'},{x:4,y:1,type:'warrior'},
+      {x:3,y:0,type:'noble_cav'},{x:7,y:0,type:'noble_cav'},{x:5,y:2,type:'warrior'},
+      {x:4,y:2,type:'archer'},{x:6,y:2,type:'archer'},
+      {x:5,y:3,type:'general',isGeneral:true}
+    ];
+
+    playerRemaining = setup.player.length;
+    aiRemaining = setup.ai.length;
+  }
+  else if (battleType === 'zama'){
+    scenarioText.textContent = 'Battle of Zama (202 BC) - Scipio vs Hannibal';
+    
+    setup.player = [
+      {x:4,y:9,type:'legionary'},{x:5,y:9,type:'legionary'},{x:6,y:9,type:'legionary'},
+      {x:4,y:8,type:'hastati'},{x:5,y:8,type:'princeps'},{x:6,y:8,type:'hastati'},
+      {x:4,y:7,type:'velites'},{x:5,y:7,type:'sagittarii'},{x:6,y:7,type:'triari'},
+      {x:3,y:9,type:'equites'},{x:7,y:9,type:'equites'},{x:3,y:8,type:'equites'},
+      {x:5,y:6,type:'general',isGeneral:true}
+    ];
+    
+    setup.ai = [
+      {x:5,y:0,type:'warrior'},{x:6,y:0,type:'warrior'},{x:4,y:0,type:'warrior'},{x:3,y:0,type:'warrior'},
+      {x:5,y:1,type:'archer'},{x:6,y:1,type:'archer'},{x:4,y:1,type:'warrior'},{x:3,y:1,type:'archer'},
+      {x:2,y:0,type:'noble_cav'},{x:8,y:0,type:'noble_cav'},{x:2,y:1,type:'horse_warrior'},{x:8,y:1,type:'horse_warrior'},
+      {x:5,y:2,type:'general',isGeneral:true}
+    ];
+
+    playerRemaining = setup.player.length;
+    aiRemaining = setup.ai.length;
+  }
+
+  // Place units on board
+  for (let u of setup.player){
+    units[u.y][u.x] = createUnit('player', u.type, unitTypes[u.type].hp, unitTypes[u.type].atk, unitTypes[u.type].move, unitTypes[u.type].range, unitTypes[u.type].label, u.isGeneral);
+  }
+  
+  for (let u of setup.ai){
+    units[u.y][u.x] = createUnit('ai', u.type, u.hp || (unitTypes[u.type] ? unitTypes[u.type].hp : 3), u.atk || (unitTypes[u.type] ? unitTypes[u.type].atk : 1), u.move || (unitTypes[u.type] ? unitTypes[u.type].move : 3), u.range || (unitTypes[u.type] ? unitTypes[u.type].range : 1), u.label, u.isGeneral);
+  }
+
+  scenario = { mode: 'historical', battleType };
+}
+
+function generateRandomScenario(){
+  initEmpty(); 
+  generateHeightMap(); 
+  terrainPatches = generateRandomTrees();
+  if (Math.random() < 0.5) terrainPatches = terrainPatches.concat(generateCentralLake());
+
+  const playerTotal = rand(12,18);
+  const aiTotal = rand(12,18);
+
+  const playerLimits = distributePlayerUnitsSiege(playerTotal);
+  const aiPool = [];
+  
+  if (Math.random() < 0.3) {
+    aiPool.push({type:'general',hp:4.5,atk:3,move:5,range:1,label:'GEN',isGeneral:true});
+  }
+  
+  const aiCav = Math.min(rand(1,2), 3);
+  for (let i=0;i<aiCav;i++) aiPool.push(Object.assign({}, aiUnitPoolTemplate[2 + rand(0,1)]));
+  const aiMain = Math.min(rand(6,10), Math.max(0, aiTotal - aiCav - aiPool.length));
+  for (let i=0;i<aiMain;i++) aiPool.push(Object.assign({}, aiUnitPoolTemplate[0]));
+  while (aiPool.length < aiTotal) aiPool.push(Object.assign({}, aiUnitPoolTemplate[1]));
+
+  scenario = { playerLimits, aiUnits: aiPool, mode:'random' };
+  playerRemaining = Object.values(playerLimits).reduce((s,n)=>s+n,0);
+  aiRemaining = aiPool.length;
+
+  scenarioText.textContent = `Random Battle vs Barbarians — Romans: ${playerRemaining}. Barbarians: ${aiRemaining}.`;
+}
+
+function buildDeployButtons(limits){
+  if (isHistorical) {
+    deployArea.innerHTML = '';
+    return;
+  }
+
+  deployArea.innerHTML = '';
+  Object.keys(limits).forEach(type=>{
+    const btn = document.createElement('button');
+    btn.id = type+'Btn';
+    btn.textContent = `${unitTypes[type].full} (${limits[type]})`;
+    btn.onclick = ()=>selectUnit(type);
+    if (limits[type] <= 0) btn.classList.add('disabled');
+    deployArea.appendChild(btn);
+  });
+
+  const sep = document.createElement('div'); sep.style.marginTop='8px'; deployArea.appendChild(sep);
+  const b1 = document.createElement('button'); b1.textContent = `Build Tower (${towersRemaining})`; b1.onclick = ()=>selectBuild('tower'); deployArea.appendChild(b1);
+  const b2 = document.createElement('button'); b2.textContent = `Build Wall (${wallsRemaining})`; b2.onclick = ()=>selectBuild('wall'); deployArea.appendChild(b2);
+  
+  updateLegend();
+}
+function selectUnit(type){ if (!deployPhase) return; if (!scenario) return; if (!scenario.playerLimits[type] || scenario.playerLimits[type] <= 0) return; currentUnitType = type; currentBuildType = null; updateUnitInfo(); }
+function selectBuild(kind){ if (!deployPhase) return; currentUnitType = null; currentBuildType = kind; updateUnitInfo(); }
+function updateUnitInfo(){ if (currentUnitType && deployPhase){ const d = unitTypes[currentUnitType]; currentUnitEl.innerHTML = `${d.full} (HP:${d.hp} ATK:${d.atk} MP:${d.move})`; } else if (currentBuildType && deployPhase){ currentUnitEl.innerHTML = `Build: ${currentBuildType.toUpperCase()}`; } else { currentUnitEl.textContent = 'Nothing'; } }
+
+// ---------- reset/start ----------
+function startFromMenu(){
+  deployPhase = isHistorical ? false : true;
+  deployTurn = null;
+  currentUnitType = null;
+  currentBuildType = null;
+  selected = null;
+  possibleMoves = [];
+  combatControls.style.display = 'none';
+  healBtn.style.display='none';
+  
+  if (isHistorical) {
+    setupHistoricalBattle(gameMode);
+    deployPhase = false;
+    turn = 'player';
+    statusEl.textContent = 'Battle Start! Command your legions to victory!';
+    combatControls.style.display = 'flex';
+  } else {
+    generateRandomScenario();
+    towersRemaining = towerMax; 
+    wallsRemaining = wallMax;
+    deployTurn = 'player';
+    statusEl.textContent = `Deploy: Place ${playerRemaining} units on your first three rows (rows 7-9) + towers/walls.`;
+    buildDeployButtons(scenario.playerLimits);
+  }
+  
+  draw();
+}
+
+canvas.addEventListener('click', handleClick);
+nextTurnBtn.addEventListener('click', ()=>{
+  selected = null;
+  possibleMoves = [];
+  healBtn.style.display='none';
+  turn = 'ai';
+  skipAnimation = false;
+  statusEl.textContent = 'Enemy units moving...';
+  nextTurnBtn.disabled = true;
+  skipWaitBtn.disabled = false;
+  draw();
+  
+  setTimeout(()=>{
+    aiActMultipleUnits();
+    draw();
+    
+    const animDelay = skipAnimation ? 50 : 400;
+    setTimeout(()=>{
+      if (checkWin()) return;
+      resetMovedFlags();
+      turn = 'player';
+      statusEl.textContent = 'Your Turn! Move units or press Next Turn.';
+      nextTurnBtn.disabled = false;
+      skipWaitBtn.disabled = true;
+      draw();
+    }, animDelay);
+  }, skipAnimation ? 50 : 400);
+});
+
+skipWaitBtn.addEventListener('click', ()=>{
+  skipAnimation = true;
+  statusEl.textContent = 'Skipping animation...';
+});
+
+healBtn.addEventListener('click', healSelectedUnit);
+
+draw();
+
+</script>
+</body>
+</html>
